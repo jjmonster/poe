@@ -1,47 +1,57 @@
+from ctypes import *
 from pymouse import *
 from pykeyboard import *
-from getpixel import gdi32, hdc
-import win32api,  win32gui, win32con
+from winfo import *
+import win32api,  win32con
 import threading
 from time import sleep
+
+gdi32 = windll.gdi32
+user32 = windll.user32
+hdc = user32.GetDC(None)
+#c=gdi32.GetPixel(hdc, 745,60)
+#print(hex(c))
 
 m=PyMouse()
 k=PyKeyboard()
 
-class grid:
+class POEWindow:
+    def __init__(self):
+        self.info = GetWindowInfo("")
+
+    def ShowWindowInfo(self):
+        ShowWindowInfo(self.info)
+
+class Grid:
     def __init__(self,  x, y,  width,  height):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.cx, self.cy = self.GetCenter()
+        self.cx = int(self.x + self.width/2)
+        self.cy = int(self.y + self.height/2)
         return
-        
-    def GetCenter(self):
-        x = self.x + self.width/2
-        y = self.y + self.height/2
-        return x, y
+
+    def GetCenterColor(self):
+        c = gdi32.GetPixel(hdc, self.cx,  self.cy)
+        return c
+
     def move_center(self):
-        m.move(int(self.cx), int(self.cy))
+        m.move(self.cx, self.cy)
+        
+    def click(self,  lr):
+        m.move(self.cx, self.cy)
+        sleep(0.02)
+        m.click(self.cx, self.cy,  lr)
+        sleep(0.02)
         
     def left_click(self):
-        m.move(int(self.cx), int(self.cy))
-        sleep(0.05)
-        m.click(int(self.cx), int(self.cy),  1)
-        sleep(0.05)
+        self.click(1)
 
     def right_click(self):
-        m.move(int(self.cx), int(self.cy))
-        sleep(0.05)
-        m.click(int(self.cx), int(self.cy),  2)
-        sleep(0.05)
+        self.click(2)
 
-    def get_corner_color(self):
-        color = gdi32.GetPixel(hdc, self.x+self.width-3, self.y+self.height-3)
-        return color
-
-        
-class bag:
+class Bag:
     def __init__(self, x,  y, nRows,  nCols):
         self.grids = []
         self.grid_width = 50  #adjust coordinate
@@ -50,15 +60,16 @@ class bag:
         self.nCols = nCols
         for i in range(nRows):
             for j in range(nCols):
-                g = grid(x+i*self.grid_width,  y+j*self.grid_height,  self.grid_width,  self.grid_height)
+                g = Grid(x+i*self.grid_width,  y+j*self.grid_height,  self.grid_width,  self.grid_height)
                 self.grids.append(g)
         return
         
     def GetGrid(self, row,  col):
         return self.grids[row + col*self.nCols]
 
-class medical:
+class Medical:
     def __init__(self, num):
+        #w = POEWindow()
         self.basex = 300   #adjust coordinate
         self.basey = 1034   #adjust coordinate
         self.width = 43  #vertical arrangement, from top to bottom, width=0  #adjust coordinate
@@ -92,8 +103,7 @@ class medical:
 
     def GetColor(self):
         c = gdi32.GetPixel(hdc, self.x,  self.y)
-        print("num=",self.num, "color=",hex(c))
-
+        return c
 
     def use(self):
         if self.ref > 0:
@@ -111,201 +121,153 @@ class medical:
             k.tap_key(self.num + 1 + 48);
         return
 
-
-###############################################################
-def print_color():
-    for i in range(len(medicals)):
-        medicals[i].GetColor()
-
-#########################################################################
-def get_cursor_pixel():
-    x, y = m.position()
-    c = hex(gdi32.GetPixel(hdc, x,  y))
-    text = "x:{} y:{} color:{}".format(x, y, c)
-    win32api.MessageBox(None,  text,  "pywin32",  win32con.MB_YESNO)
-###################################################################
+class POEFunctions:
+    def __init__(self):
+        self.druging = False
+        self.messaging = False
+        self.fnclick = False
+        self.chance = False
+        self.clickgrids = False
+        self.timerkey = False
     
-def ctrl_click_all_bag_grids():
-    global clickgrids
-    clickgrids = True
-    k.press_key(k.control_key)
-    for i in range(len(b1.grids)):
-        b1.grids[i].left_click()
-        b1.grids[i].left_click()
-        if clickgrids == False:
-            break
+        self.medicals = []
+        for i in range(5):
+            self.medicals.append(Medical(i))
 
-    k.release_key(k.control_key)
-    clickgrids = False
+        self.medicals[0].SetReference(1,  110,  880)  #adjust coordinate
 
-def click_grids_toggle():
-    global clickgrids
-    if clickgrids == False:
-        threading.Timer(0.1, ctrl_click_all_bag_grids).start()
-    else:
-        clickgrids = False
+        #medicals[1].SetLink(2)
+        #medicals[2].SetLink(1)
+        #medicals[3].SetLink(4)
+        #medicals[4].SetLink(3)
 
-################################################################
-def func_click(fn):
-    global fnclick
-    fnclick = True
-    if fn == "shift":
-        k.press_key(k.shift_key)
-    elif fn == "ctrl":
-        k.press_key(k.control_key)
-    while fnclick:
+        self.bag = Bag(1304, 575, 12, 5)  #adjust coordinate
+        
+    def stop_all_func(self):
+        self.druging = False
+        self.messaging = False
+        self.fnclick = False
+        self.chance = False
+        self.clickgrids = False
+        self.timerkey = False
+
+    def get_cursor_color(self):
         x, y = m.position()
-        m.click(x, y, 1)
-        sleep(0.2)
-    if fn == "shift":
-        k.release_key(k.shift_key)
-    elif fn == "ctrl":
+        c = hex(gdi32.GetPixel(hdc, x,  y))
+        text = "x:{} y:{} color:{}".format(x, y, c)
+        win32api.MessageBox(None,  text,  "pywin32",  win32con.MB_YESNO)
+
+    def print_all_grids_color(self):
+        for i in range(self.bag.nRows):#(1):
+            for j in range(self.bag.nCols):
+                color = self.bag.grids[i*self.bag.nCols+j].GetCenterColor()
+                print(i, j, color)
+            print("\n")
+
+    def ctrl_click_all_bag_grids(self):
+        self.clickgrids = True
+        k.press_key(k.control_key)
+        for i in range(len(self.bag.grids)):
+            self.bag.grids[i].left_click()
+            self.bag.grids[i].left_click()
+            if self.clickgrids == False:
+                break
         k.release_key(k.control_key)
-   
-def start_func_click_timer(fn):
-    threading.Timer(1, func_click, (fn,)).start()
-    
-def stop_func_click_timer():
-    global fnclick
-    fnclick = False
+        self.clickgrids = False
 
-def func_click_toggle(fn):
-    if fnclick == False:
-        start_func_click_timer(fn)
-    else:
-        stop_func_click_timer()
+    def click_grids_toggle(self):
+        if self.clickgrids == False:
+            threading.Timer(0.1, self.ctrl_click_all_bag_grids).start()
+        else:
+            self.clickgrids = False
 
-################################################################
-def send_msg():
-    global messaging
-    if messaging == False:
-        return
-    k.tap_key(k.enter_key)
-    k.tap_key(k.up_key)
-    k.tap_key(k.enter_key)
-    threading.Timer(10, send_msg).start()
-    
-def start_msg_timer():
-    global messaging
-    messaging = True
-    threading.Timer(10, send_msg).start()
+    def func_click(self, fn):
+        if fn == "shift":
+            key= k.shift_key
+        elif fn == "ctrl":
+            key = k.control_key
+        k.press_key(key)
+        while self.fnclick:
+            x, y = m.position()
+            m.click(x, y, 1)
+            sleep(0.2)
+        k.release_key(key)
 
-def stop_msg_timer():
-    global messaging
-    messaging = False
+    def func_click_toggle(self, fn):
+        if self.fnclick == False:
+            self.fnclick = True
+            threading.Timer(0.1, self.func_click, (fn,)).start()
+        else:
+            self.fnclick = False
 
-def msg_toggle():
-    if messaging == False:
-        start_msg_timer()
-    else:
-        stop_msg_timer()
-################################################################
-def print_all_grids_color():
-    for i in range(1):#(b1.nRows):
-        for j in range(b1.nCols):
-            color = b1.grids[i*b1.nCols+j].get_corner_color()
-            print(i, j, color)
-        print("\n")
-
-def chance():
-    while chancing:
-        b1.grids[1].right_click()
-        b1.grids[0].left_click()
-        b1.grids[2].right_click()
-        b1.grids[0].left_click()
-
-def start_chance_timer():
-    global chancing
-    chancing = True
-    threading.Timer(1, chance).start()
-
-def stop_chance_timer():
-    global chancing
-    chancing = False
-
-def chance_toggle():
-    if chancing == False:
-        start_chance_timer()
-    else:
-        stop_chance_timer()
-#################################################################
-def drug():
-    global druging
-    if druging == 0:
-        return
-    druging += 1
-    for i in range(len(medicals)):
-        medicals[i].use()
-        sleep(0.1)
-    if druging%3 == 1:
-        k.tap_key("y")
-    if druging%3 == 2:
-        k.tap_key("r")
-    threading.Timer(0.2, drug).start()
-
-def start_drug_timer():
-    global druging
-    druging = 1
-    threading.Timer(0.2, drug).start()
-
-def stop_drug_timer():
-    global druging
-    druging = 0
-
-def drug_toggle():
-    if druging == 0:
-        start_drug_timer()
-    else:
-        stop_drug_timer()
-
-def start_attack():
-    global attacking
-    if attacking == True:
-        return
-    attacking = True
-    start_drug_timer()
-    
-def stop_attack():
-    global attacking
-    attacking = False
-    stop_drug_timer()
-
-def attack_toggle():
-    if attacking == False:
-        start_attack()
-    else:
-        stop_attack()
+    def send_msg(self):
+        while self.messaging:
+            k.tap_key(k.enter_key)
+            k.tap_key(k.up_key)
+            k.tap_key(k.enter_key)
+            sleep(10)
         
-def globals_init():
-    global attacking
-    global druging
-    global messaging
-    global fnclick
-    global chancing
-    global clickgrids
+    def msg_toggle(self):
+        if self.messaging == False:
+            self.messaging = True
+            threading.Timer(10, self.send_msg).start()
+        else:
+            self.messaging = False
 
-    attacking = False
-    druging = 0
-    messaging = False
-    fnclick = False
-    chancing = False
-    clickgrids = False
-    
-    global medicals
-    medicals = []
-    for i in range(5):
-        medicals.append(medical(i))
-        
-    medicals[0].SetReference(1,  110,  880)  #adjust coordinate
+    def chance_and_recoin(self):
+        while self.chance:
+            self.bag.grids[10].right_click()
+            self.bag.grids[0].left_click()
+            self.bag.grids[15].right_click()
+            self.bag.grids[0].left_click()
 
-    #medicals[1].SetLink(2)
-    #medicals[2].SetLink(1)
+    def chance_toggle(self):
+        if self.chance == False:
+            self.chance = True
+            threading.Timer(1, self.chance_and_recoin).start()
+        else:
+            self.chance = False
 
-    #medicals[3].SetLink(4)
-    #medicals[4].SetLink(3)
+    def drug(self):
+        while self.druging:
+            for i in range(len(self.medicals)):
+                self.medicals[i].use()
+                sleep(0.1)
 
-    global b1
-    b1 = bag(1304, 575, 12, 5)  #adjust coordinate
-        
+    def drug_start(self):
+        if self.druging == False:
+            self.druging = True
+            threading.Timer(0.1, self.drug).start()
+            
+    def drug_toggle(self):
+        if self.druging == False:
+            self.druging = True
+            threading.Timer(0.1, self.drug).start()
+        else:
+            self.druging = False
+
+    def timer_key(self):
+        while self.timerkey:
+            k.tap_key("y")
+            sleep(1)
+            k.tap_key("r")
+            sleep(1)
+
+    def timer_key_start(self):
+        if self.timerkey == False:
+            self.timerkey = True
+            threading.Timer(0.1, self.timer_key).start()
+
+    def timer_key_toggle(self):
+        if self.timerkey == False:
+            self.timerkey = True
+            threading.Timer(0.1, self.timer_key).start()
+        else:
+            self.timerkey = False
+
 if __name__ == "__main__":
-    globals_init()
+    f = POEFunctions()
+    f.get_cursor_color()
+    #f.print_all_grids_color()
+    for i in range(len(f.bag.grids)):
+        print(f.bag.grids[i].x,  f.bag.grids[i].y)

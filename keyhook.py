@@ -2,24 +2,20 @@
 import os
 import PyHook3
 from poe import *
-from getpixel import *
 
 pause = False
+pf = POEFunctions()
+
 def onMouseEvent(event): 
     global pause
     if pause == True:
         return True
     if event.MessageName == "mouse wheel":
         if event.Wheel == 1:
-            #print("wheel up")
-            start_attack()
+            pf.drug_start()
+            pf.timer_key_start()
         elif event.Wheel == -1:
-            #print("wheel down")
-            stop_attack()
-            stop_func_click_timer()
-            stop_msg_timer()
-#    elif event.MessageName == "":
-#        pass
+            pf.stop_all_func()
     # return True to pass the event to other handlers
     # return False to stop the event from propagating
     return False
@@ -34,29 +30,21 @@ def onKeyEvent(event):
             pause = False
     if pause == True:
         return True
-
-    if event.Key == "F8":
-        msg_toggle()
-    elif event.Key == "F5":
-        chance_toggle()
-        #print_all_grids_color()
     elif event.Key == "F9":
-        func_click_toggle("ctrl")
+        pf.func_click_toggle("ctrl")
     elif event.Key == "F10":
-        func_click_toggle("shift")
+        pf.func_click_toggle("shift")
     elif event.Key == "F11":
-        click_grids_toggle()
-    elif event.Key == "F6":
-        #get_cursor_pixel()
-        #ShowWindowInfo()
-        info = GetForegroundWindowInfo()
-        x = info["right"] - info["left"]
-        y = info["bottom"] - info["top"]
-        m.move(int(x/2),int(y/2))
-    elif event.Key == "F7":
-        print_color()
+        pf.click_grids_toggle()
+    elif event.Key == "F12":
+        pf.chance_toggle()
+    elif event.Key == "F8":
+        pf.msg_toggle()
+    elif event.Key == "F4":
+        pf.get_cursor_color()
     elif event.Key == "F3":
         #print("exit")
+        pf.stop_all_func()
         os._exit(0)
     # return True to pass the event to other handlers
     # return False to stop the event from propagating
