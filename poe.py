@@ -15,13 +15,6 @@ hdc = user32.GetDC(None)
 m=PyMouse()
 k=PyKeyboard()
 
-class POEWindow:
-    def __init__(self):
-        self.info = GetWindowInfo("")
-
-    def ShowWindowInfo(self):
-        ShowWindowInfo(self.info)
-
 class Grid:
     def __init__(self,  x, y,  width,  height):
         self.x = x
@@ -51,44 +44,93 @@ class Grid:
     def right_click(self):
         self.click(2)
 
-class Bag:
-    def __init__(self, x,  y, nRows,  nCols):
+class POEWindow:
+    def __init__(self):
+        self.full_screen_left = -8
+        self.full_screen_top = -8
+        self.full_screen_right = 1928
+        self.full_screen_bottom = 1048
+        self.full_screen_width = self.full_screen_right - self.full_screen_left
+        self.full_screen_height = self.full_screen_bottom - self.full_screen_top
+        try:
+            self.info = GetWindowInfo("POEWindowClass")
+            #print(self.info)
+            self.bag_x = int(1304 * self.info["width"] / self.full_screen_width)
+            self.bag_y = int(575 * self.info["height"] / self.full_screen_height)
+            self.bag_nRows = 12
+            self.bag_nCols = 5
+            self.bag_grid_width = int(50 * self.info["width"] / self.full_screen_width)
+            self.bag_grid_height = int(50 * self.info["height"] / self.full_screen_height)
+            self.medicals_base_x = int(300 * self.info["width"] / self.full_screen_width)
+            self.medicals_base_y = int(1034 * self.info["height"] / self.full_screen_height)
+            self.medicals_width = int(43 * self.info["width"] / self.full_screen_width)
+            self.medicals_height = 0
+            self.ref_life_x = int(110 * self.info["width"] / self.full_screen_width)
+            self.ref_life_y = int(880 * self.info["height"] / self.full_screen_height)
+        except:
+            #print("can't find POEWindowClass use default value!")
+            self.bag_x = 1304
+            self.bag_y = 575
+            self.bag_nRows = 12
+            self.bag_nCols = 5
+            self.bag_grid_width = 50
+            self.bag_grid_height = 50
+            self.medicals_base_x = 300
+            self.medicals_base_y = 1034
+            self.medicals_width = 43
+            self.medicals_height = 0
+            self.ref_life_x = 110
+            self.ref_life_y = 880
+
+    def ShowWindowInfo(self):
+        ShowWindowInfo(self.info)
+
+class Bag(POEWindow):
+    def __init__(self):
+        super(Bag, self).__init__()
         self.grids = []
-        self.grid_width = 50  #adjust coordinate
-        self.grid_height = 50 #adjust coordinate
-        self.nRows = nRows
-        self.nCols = nCols
-        for i in range(nRows):
-            for j in range(nCols):
-                g = Grid(x+i*self.grid_width,  y+j*self.grid_height,  self.grid_width,  self.grid_height)
+        for i in range(self.bag_nRows):
+            for j in range(self.bag_nCols):
+                g = Grid(self.bag_x+i*self.bag_grid_width,  self.bag_y+j*self.bag_grid_height,  self.bag_grid_width,  self.bag_grid_height)
                 self.grids.append(g)
         return
         
     def GetGrid(self, row,  col):
         return self.grids[row + col*self.nCols]
 
-class Medical:
+class Medical(POEWindow):
     def __init__(self, num):
-        #w = POEWindow()
-        self.basex = 300   #adjust coordinate
-        self.basey = 1034   #adjust coordinate
-        self.width = 43  #vertical arrangement, from top to bottom, width=0  #adjust coordinate
-        self.height = 0   #Horizontal, from left to right. height=0
+        super(Medical, self).__init__()
         self.num = num
-        self.x = self.basex + num*self.width
-        self.y = self.basey + num*self.height
-        self.orig_color = gdi32.GetPixel(hdc,self.x,self.y)
         self.attr = 0
-        self.ref = 0
+        self.ref = ""
         self.link = 0
+        self.timer = 0
+        self.timer_count = 0
+        
+    def SetOrigColor(self):
+        self.x = self.medicals_base_x + num*self.medicals_width
+        self.y = self.medicals_base_y + num*self.medicals_height
+        self.orig_color = gdi32.GetPixel(hdc,self.x,self.y)
         print("medical init num=",num,"x=",self.x,"y=",self.y,"orig color=", hex(self.orig_color))
     
-    def SetReference(self,  ref,  x,  y):
-        self.ref = ref  #ref=1 -> life , ref=2 -> mana, ref=3 -> shield
-        self.ref_x = x
-        self.ref_y = y
+    def SetReference(self,  ref):
+        #ref=1 -> life , ref=2 -> mana, ref=3 -> shield
+        if ref == "life":
+            self.ref_x = self.ref_life_x
+            self.ref_y = self.ref_life_y
+        elif ref == "mana":
+            #todo
+            pass
+        elif ref == "shield":
+            #todo
+            pass
+        else:
+            print("Unknown value!")
+            return
+        self.ref = ref
         self.ref_orig_color = 0
-        if self.ref > 0:
+        if self.ref != "":
            self.ref_orig_color =  gdi32.GetPixel(hdc, self.ref_x,  self.ref_y)
         print("ref", self.ref,  "color:",  hex(self.ref_orig_color))
         
@@ -101,12 +143,23 @@ class Medical:
         self.link_orig_color = gdi32.GetPixel(hdc, self.link_x,  self.link_y)
         print("link", self.num, "->", num, "color:", hex(self.link_orig_color))
 
+    def SetTimer(self,  t):
+        self.timer = t
+        self.timer_count = 0
+        
     def GetColor(self):
         c = gdi32.GetPixel(hdc, self.x,  self.y)
         return c
 
     def use(self):
-        if self.ref > 0:
+        if self.timer != 0:
+            if self.timer_count <= 0:
+                k.tap_key(self.num + 1 + 48);
+                self.timer_count = self.timer
+            self.timer_count -= 0.5  #one cycle is 0.5s
+            return
+            
+        if self.ref != "":
             c = gdi32.GetPixel(hdc, self.ref_x,  self.ref_y)
             if c == self.ref_orig_color: #reference color have not changed
                 return
@@ -130,18 +183,27 @@ class POEFunctions:
         self.clickgrids = False
         self.timerkey = False
     
+        #self.window = POEWindow()
         self.medicals = []
         for i in range(5):
             self.medicals.append(Medical(i))
-
-        self.medicals[0].SetReference(1,  110,  880)  #adjust coordinate
-
+        if False:
+            for i in range(5):
+                self.medicals[i].SetOrigColor()
+            self.medicals[0].SetReference("life")
+        else:
+            self.medicals[0].SetTimer(0.5)
+            self.medicals[1].SetTimer(3.8)
+            self.medicals[2].SetTimer(4.0)
+            self.medicals[3].SetTimer(5.0)
+            self.medicals[4].SetTimer(4.0)
+            
         #medicals[1].SetLink(2)
         #medicals[2].SetLink(1)
         #medicals[3].SetLink(4)
         #medicals[4].SetLink(3)
-
-        self.bag = Bag(1304, 575, 12, 5)  #adjust coordinate
+        
+        self.bag = Bag()
         
     def stop_all_func(self):
         self.druging = False
