@@ -2,8 +2,9 @@ from ctypes import *
 from pymouse import *
 from pykeyboard import *
 from winfo import *
-import win32api,  win32con
-import threading
+import win32api,win32con
+import win32clipboard as wc
+import re,threading
 from time import sleep
 
 gdi32 = windll.gdi32
@@ -53,41 +54,33 @@ class POEWindow:
         self.full_screen_width = self.full_screen_right - self.full_screen_left
         self.full_screen_height = self.full_screen_bottom - self.full_screen_top
         try:
-            self.info = GetWindowInfo("POEWindowClass")
-            #print(self.info)
-            self.bag_x = int(1304 * self.info["width"] / self.full_screen_width)
-            self.bag_y = int(575 * self.info["height"] / self.full_screen_height)
+            self.winfo = GetWindowInfo("POEWindowClass")
+            print(self.winfo)
+        except:
+            print("can't find POEWindowClass use default value!")
+
+    def ShowWindowInfo(self):
+        ShowWindowInfo(self.winfo)
+
+class Bag(POEWindow):
+    def __init__(self):
+        super(Bag, self).__init__()
+        #bag coordinate
+        try:
+            self.bag_x = int(1304 * self.winfo["width"] / self.full_screen_width)
+            self.bag_y = int(575 * self.winfo["height"] / self.full_screen_height)
             self.bag_nRows = 12
             self.bag_nCols = 5
-            self.bag_grid_width = int(50 * self.info["width"] / self.full_screen_width)
-            self.bag_grid_height = int(50 * self.info["height"] / self.full_screen_height)
-            self.medicals_base_x = int(300 * self.info["width"] / self.full_screen_width)
-            self.medicals_base_y = int(1034 * self.info["height"] / self.full_screen_height)
-            self.medicals_width = int(43 * self.info["width"] / self.full_screen_width)
-            self.medicals_height = 0
-            self.ref_life_x = int(110 * self.info["width"] / self.full_screen_width)
-            self.ref_life_y = int(880 * self.info["height"] / self.full_screen_height)
+            self.bag_grid_width = int(50 * self.winfo["width"] / self.full_screen_width)
+            self.bag_grid_height = int(50 * self.winfo["height"] / self.full_screen_height)
         except:
-            #print("can't find POEWindowClass use default value!")
             self.bag_x = 1304
             self.bag_y = 575
             self.bag_nRows = 12
             self.bag_nCols = 5
             self.bag_grid_width = 50
             self.bag_grid_height = 50
-            self.medicals_base_x = 300
-            self.medicals_base_y = 1034
-            self.medicals_width = 43
-            self.medicals_height = 0
-            self.ref_life_x = 110
-            self.ref_life_y = 880
-
-    def ShowWindowInfo(self):
-        ShowWindowInfo(self.info)
-
-class Bag(POEWindow):
-    def __init__(self):
-        super(Bag, self).__init__()
+        
         self.grids = []
         for i in range(self.bag_nRows):
             for j in range(self.bag_nCols):
@@ -101,6 +94,22 @@ class Bag(POEWindow):
 class Medical(POEWindow):
     def __init__(self, num):
         super(Medical, self).__init__()
+        #coordinate
+        try:
+            self.medicals_base_x = int(300 * self.winfo["width"] / self.full_screen_width)
+            self.medicals_base_y = int(1034 * self.winfo["height"] / self.full_screen_height)
+            self.medicals_width = int(43 * self.winfo["width"] / self.full_screen_width)
+            self.medicals_height = 0
+            self.ref_life_x = int(110 * self.winfo["width"] / self.full_screen_width)
+            self.ref_life_y = int(880 * self.winfo["height"] / self.full_screen_height)
+        except:
+            self.medicals_base_x = 300
+            self.medicals_base_y = 1034
+            self.medicals_width = 43
+            self.medicals_height = 0
+            self.ref_life_x = 110
+            self.ref_life_y = 880
+        
         self.num = num
         self.attr = 0
         self.ref = ""
@@ -109,10 +118,10 @@ class Medical(POEWindow):
         self.timer_count = 0
         
     def SetOrigColor(self):
-        self.x = self.medicals_base_x + num*self.medicals_width
-        self.y = self.medicals_base_y + num*self.medicals_height
+        self.x = self.medicals_base_x + self.num*self.medicals_width
+        self.y = self.medicals_base_y + self.num*self.medicals_height
         self.orig_color = gdi32.GetPixel(hdc,self.x,self.y)
-        print("medical init num=",num,"x=",self.x,"y=",self.y,"orig color=", hex(self.orig_color))
+        print("medical init num=",self.num,"x=",self.x,"y=",self.y,"orig color=", hex(self.orig_color))
     
     def SetReference(self,  ref):
         #ref=1 -> life , ref=2 -> mana, ref=3 -> shield
@@ -138,8 +147,8 @@ class Medical(POEWindow):
         if num == self.num:
             return
         self.link = num
-        self.link_x = self.x + (num - self.num)*self.width
-        self.link_y = self.y + (num - self.num)*self.height
+        self.link_x = self.x + (num - self.num)*self.medicals_width
+        self.link_y = self.y + (num - self.num)*self.medicals_height
         self.link_orig_color = gdi32.GetPixel(hdc, self.link_x,  self.link_y)
         print("link", self.num, "->", num, "color:", hex(self.link_orig_color))
 
@@ -173,6 +182,38 @@ class Medical(POEWindow):
         if c == self.orig_color:
             k.tap_key(self.num + 1 + 48);
         return
+        
+class CurrencyRepository(POEWindow):
+    def __init__(self):
+        super(CurrencyRepository, self).__init__()
+        #coordinate
+        try:
+            self.mirror = 0 #Mirror of Kalandra 卡兰德的魔镜
+            self.scour = 0 #Orb of Scour 重铸
+            self.reg = 0 #Orb of Reg 后悔
+            self.c = 0 #Chaos Orb 混沌
+            self.regal = 0 #Regal Orb 富豪
+            self.vaal = 0 #Vaal Orb 瓦尔宝珠
+            self.div = 0 #Div Orb 神圣
+            self.ex = 0 #Exalted Orb 崇高
+            self.alt = 0 #Orb of Alteration 改造
+            self.alt_x = 107
+            self.alt_y = 300
+            self.aug = 0#Orb of Augmentation
+            self.aug_x = 220
+            self.aug_y = 350
+            self.chance = 0 #Orb of Chance 机会
+            self.alc = 0 #Orb of Alchemy 点金
+            self.chrom = 0 #Chromatic Orb 五彩
+            self.jew = 0 #jeweller's Orb 工匠
+            self.fus = 0 #Orb of Fusing 链接
+            self.chis = 0 #Cartographer's Chisel 图钉
+            self.gmp = 0 #Gemcutter's Prism 宝石匠的棱镜
+            self.biggrid = 0
+            self.biggrid_x = 314
+            self.biggrid_y = 466
+        except:
+            print("Fail init Currency Repository!")
 
 class POEFunctions:
     def __init__(self):
@@ -182,28 +223,33 @@ class POEFunctions:
         self.chance = False
         self.clickgrids = False
         self.timerkey = False
+        self.medicals_timer = False
+        self.altering = False
+        self.role = 1
     
         #self.window = POEWindow()
         self.medicals = []
         for i in range(5):
             self.medicals.append(Medical(i))
-        if False:
-            for i in range(5):
-                self.medicals[i].SetOrigColor()
-            self.medicals[0].SetReference("life")
-        else:
+        if self.medicals_timer:
             self.medicals[0].SetTimer(0.5)
             self.medicals[1].SetTimer(3.8)
             self.medicals[2].SetTimer(4.0)
             self.medicals[3].SetTimer(5.0)
             self.medicals[4].SetTimer(4.0)
+        else:##use color identify instead of timer
+            #if self.role == 0:
+            #self.medicals[0].SetReference("life")
+            for i in range(5):
+                self.medicals[i].SetOrigColor()
             
         #medicals[1].SetLink(2)
         #medicals[2].SetLink(1)
-        #medicals[3].SetLink(4)
-        #medicals[4].SetLink(3)
+        #self.medicals[3].SetLink(4)
+        #self.medicals[4].SetLink(3)
         
         self.bag = Bag()
+        self.cr = CurrencyRepository()
         
     def stop_all_func(self):
         self.druging = False
@@ -212,6 +258,7 @@ class POEFunctions:
         self.chance = False
         self.clickgrids = False
         self.timerkey = False
+        self.altering = False
 
     def get_cursor_color(self):
         x, y = m.position()
@@ -267,7 +314,7 @@ class POEFunctions:
             k.tap_key(k.enter_key)
             k.tap_key(k.up_key)
             k.tap_key(k.enter_key)
-            sleep(10)
+            sleep(20)
         
     def msg_toggle(self):
         if self.messaging == False:
@@ -276,7 +323,7 @@ class POEFunctions:
         else:
             self.messaging = False
 
-    def chance_and_recoin(self):
+    def chance_and_scour(self):
         while self.chance:
             self.bag.grids[10].right_click()
             self.bag.grids[0].left_click()
@@ -286,9 +333,67 @@ class POEFunctions:
     def chance_toggle(self):
         if self.chance == False:
             self.chance = True
-            threading.Timer(1, self.chance_and_recoin).start()
+            threading.Timer(1, self.chance_and_scour).start()
         else:
             self.chance = False
+            
+    def affix_alter(self):
+        #prefix = "▲" suffix = "▽"
+        affix = "▲"
+        target = "爆炸"
+        while self.altering:
+            #copy clipboard
+            m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+            sleep(0.1)
+            k.press_key(k.control_key)
+            k.tap_key("c")
+            k.release_key(k.control_key)
+            sleep(0.1)
+            wc.OpenClipboard()
+            text = wc.GetClipboardData(win32con.CF_UNICODETEXT)
+            wc.CloseClipboard()
+            #print(text)
+            if re.search("奉献地面", text) is not None:
+                #use Orb of Alteration
+                m.move(self.cr.alt_x, self.cr.alt_y)
+                sleep(0.2)
+                m.click(self.cr.alt_x, self.cr.alt_y, 2)
+                sleep(0.2)
+                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+                sleep(0.2)
+                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
+                sleep(0.2)
+                continue
+            if re.search(affix, text) is None:
+                #use Orb of Augmentation
+                m.move(self.cr.aug_x, self.cr.aug_y)
+                sleep(0.2)
+                m.click(self.cr.aug_x, self.cr.aug_y, 2)
+                sleep(0.2)
+                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+                sleep(0.2)
+                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
+                sleep(0.2)
+            elif re.search(target, text) is None:
+                #use Orb of Alteration
+                m.move(self.cr.alt_x, self.cr.alt_y)
+                sleep(0.2)
+                m.click(self.cr.alt_x, self.cr.alt_y, 2)
+                sleep(0.2)
+                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+                sleep(0.2)
+                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
+                sleep(0.2)
+            else:
+                break
+        self.altering = False
+        
+    def affix_alter_toggle(self):
+        if self.altering == False:
+            self.altering = True
+            threading.Timer(1, self.affix_alter).start()
+        else:
+            self.altering = False
 
     def drug(self):
         while self.druging:
@@ -300,7 +405,10 @@ class POEFunctions:
         if self.druging == False:
             self.druging = True
             threading.Timer(0.1, self.drug).start()
-            
+
+    def drug_stop(self):
+        self.druging = False
+
     def drug_toggle(self):
         if self.druging == False:
             self.druging = True
@@ -310,15 +418,32 @@ class POEFunctions:
 
     def timer_key(self):
         while self.timerkey:
-            k.tap_key("y")
-            sleep(1)
-            k.tap_key("r")
-            sleep(1)
+            if self.role == 0:
+                k.tap_key("y")
+                sleep(2)
+                k.tap_key("r")
+                sleep(2)
+                k.tap_key("t")
+                sleep(2)
+            elif self.role == 1 or self.role == 2:
+                k.tap_key("y")
+                sleep(0.2)
+                k.tap_key("r")
+                sleep(0.2)
+                k.tap_key("t")
+                sleep(0.2)
+
 
     def timer_key_start(self):
         if self.timerkey == False:
             self.timerkey = True
             threading.Timer(0.1, self.timer_key).start()
+            k.press_key("f")
+
+    def timer_key_stop(self):
+        k.release_key("f")
+        self.timerkey = False
+
 
     def timer_key_toggle(self):
         if self.timerkey == False:

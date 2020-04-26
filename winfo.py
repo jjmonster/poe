@@ -49,5 +49,7 @@ if __name__ == "__main__":
     hwnd = win32gui.GetForegroundWindow()
     #hwnd=win32gui.GetWindow(hwnd,win32con.GW_CHILD)
     win32gui.ShowWindow(hwnd, win32con.SW_HIDE|win32con.SW_MINIMIZE)
+    info = GetForegroundWindowInfo()
+    ShowWindowInfo(info)
 
     
