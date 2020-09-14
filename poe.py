@@ -190,6 +190,8 @@ class CurrencyRepository(POEWindow):
         try:
             self.mirror = 0 #Mirror of Kalandra 卡兰德的魔镜
             self.scour = 0 #Orb of Scour 重铸
+            self.scour_x = 160
+            self.scour_y = 470
             self.reg = 0 #Orb of Reg 后悔
             self.c = 0 #Chaos Orb 混沌
             self.regal = 0 #Regal Orb 富豪
@@ -203,6 +205,8 @@ class CurrencyRepository(POEWindow):
             self.aug_x = 220
             self.aug_y = 350
             self.chance = 0 #Orb of Chance 机会
+            self.chance_x = 215
+            self.chance_y = 300
             self.alc = 0 #Orb of Alchemy 点金
             self.chrom = 0 #Chromatic Orb 五彩
             self.jew = 0 #jeweller's Orb 工匠
@@ -243,8 +247,8 @@ class POEFunctions:
             for i in range(5):
                 self.medicals[i].SetOrigColor()
             
-        #medicals[1].SetLink(2)
-        #medicals[2].SetLink(1)
+        #self.medicals[1].SetLink(2)
+        #self.medicals[2].SetLink(1)
         #self.medicals[3].SetLink(4)
         #self.medicals[4].SetLink(3)
         
@@ -325,10 +329,31 @@ class POEFunctions:
 
     def chance_and_scour(self):
         while self.chance:
-            self.bag.grids[10].right_click()
-            self.bag.grids[0].left_click()
-            self.bag.grids[15].right_click()
-            self.bag.grids[0].left_click()
+            if False:
+                self.bag.grids[10].right_click()
+                self.bag.grids[0].left_click()
+                self.bag.grids[15].right_click()
+                self.bag.grids[0].left_click()
+            else:
+                #target = "稀 有 度: 传奇"
+                m.move(self.cr.scour_x, self.cr.scour_y)
+                sleep(0.2)
+                m.click(self.cr.scour_x, self.cr.scour_y, 2)
+                sleep(0.2)
+                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+                sleep(0.2)
+                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
+                sleep(0.2)
+                m.move(self.cr.chance_x, self.cr.chance_y)
+                sleep(0.2)
+                m.click(self.cr.chance_x, self.cr.chance_y, 2)
+                sleep(0.2)
+                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+                sleep(0.2)
+                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
+                sleep(0.2)
+                
+
 
     def chance_toggle(self):
         if self.chance == False:
@@ -339,8 +364,9 @@ class POEFunctions:
             
     def affix_alter(self):
         #prefix = "▲" suffix = "▽"
-        affix = "▲"
-        target = "爆炸"
+        affix = "▲"#"▽" #"▲"#"▲"#
+        target = "爆炸"#"尾流" #"最大能量护盾"#"爆炸"#"活力"#"减少"#"灵巧"#"爆炸"#"主动技能"#"减少"#
+        used = ""
         while self.altering:
             #copy clipboard
             m.move(self.cr.biggrid_x,self.cr.biggrid_y)
@@ -353,18 +379,7 @@ class POEFunctions:
             text = wc.GetClipboardData(win32con.CF_UNICODETEXT)
             wc.CloseClipboard()
             #print(text)
-            if re.search("奉献地面", text) is not None:
-                #use Orb of Alteration
-                m.move(self.cr.alt_x, self.cr.alt_y)
-                sleep(0.2)
-                m.click(self.cr.alt_x, self.cr.alt_y, 2)
-                sleep(0.2)
-                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
-                sleep(0.2)
-                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
-                sleep(0.2)
-                continue
-            if re.search(affix, text) is None:
+            if re.search(affix, text) is None and used != "aug":
                 #use Orb of Augmentation
                 m.move(self.cr.aug_x, self.cr.aug_y)
                 sleep(0.2)
@@ -374,6 +389,7 @@ class POEFunctions:
                 sleep(0.2)
                 m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
                 sleep(0.2)
+                used = "aug"
             elif re.search(target, text) is None:
                 #use Orb of Alteration
                 m.move(self.cr.alt_x, self.cr.alt_y)
@@ -384,6 +400,7 @@ class POEFunctions:
                 sleep(0.2)
                 m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
                 sleep(0.2)
+                used = "alt"
             else:
                 break
         self.altering = False
@@ -399,7 +416,7 @@ class POEFunctions:
         while self.druging:
             for i in range(len(self.medicals)):
                 self.medicals[i].use()
-                sleep(0.1)
+                sleep(0.2)
 
     def drug_start(self):
         if self.druging == False:
@@ -419,19 +436,19 @@ class POEFunctions:
     def timer_key(self):
         while self.timerkey:
             if self.role == 0:
-                k.tap_key("y")
-                sleep(2)
+#                k.tap_key("y")
+#                sleep(2)
                 k.tap_key("r")
                 sleep(2)
                 k.tap_key("t")
                 sleep(2)
             elif self.role == 1 or self.role == 2:
-                k.tap_key("y")
+                k.tap_key("f")
                 sleep(0.2)
                 k.tap_key("r")
                 sleep(0.2)
-                k.tap_key("t")
-                sleep(0.2)
+#                k.tap_key("t")
+#                sleep(0.2)
 
 
     def timer_key_start(self):

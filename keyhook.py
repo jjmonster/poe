@@ -47,9 +47,9 @@ def onKeyEvent(event):
     elif event.Key == "F8":
         pf.msg_toggle()
     elif event.Key == "F4":
-        #pf.get_cursor_color()
-        info = GetForegroundWindowInfo()
-        ShowWindowInfo(info)
+        pf.get_cursor_color()
+        #info = GetForegroundWindowInfo()
+        #ShowWindowInfo(info)
     elif event.Key == "F6":
         x, y = m.position()
         print(x,y)
