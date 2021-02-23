@@ -191,7 +191,7 @@ class CurrencyRepository(POEWindow):
             self.mirror = 0 #Mirror of Kalandra 卡兰德的魔镜
             self.scour = 0 #Orb of Scour 重铸
             self.scour_x = 160
-            self.scour_y = 470
+            self.scour_y = 440
             self.reg = 0 #Orb of Reg 后悔
             self.c = 0 #Chaos Orb 混沌
             self.regal = 0 #Regal Orb 富豪
@@ -200,13 +200,13 @@ class CurrencyRepository(POEWindow):
             self.ex = 0 #Exalted Orb 崇高
             self.alt = 0 #Orb of Alteration 改造
             self.alt_x = 107
-            self.alt_y = 300
+            self.alt_y = 262
             self.aug = 0#Orb of Augmentation
             self.aug_x = 220
-            self.aug_y = 350
+            self.aug_y = 320
             self.chance = 0 #Orb of Chance 机会
             self.chance_x = 215
-            self.chance_y = 300
+            self.chance_y = 270
             self.alc = 0 #Orb of Alchemy 点金
             self.chrom = 0 #Chromatic Orb 五彩
             self.jew = 0 #jeweller's Orb 工匠
@@ -229,7 +229,6 @@ class POEFunctions:
         self.timerkey = False
         self.medicals_timer = False
         self.altering = False
-        self.role = 1
     
         #self.window = POEWindow()
         self.medicals = []
@@ -242,7 +241,6 @@ class POEFunctions:
             self.medicals[3].SetTimer(5.0)
             self.medicals[4].SetTimer(4.0)
         else:##use color identify instead of timer
-            #if self.role == 0:
             #self.medicals[0].SetReference("life")
             for i in range(5):
                 self.medicals[i].SetOrigColor()
@@ -337,21 +335,21 @@ class POEFunctions:
             else:
                 #target = "稀 有 度: 传奇"
                 m.move(self.cr.scour_x, self.cr.scour_y)
-                sleep(0.2)
+                sleep(0.1)
                 m.click(self.cr.scour_x, self.cr.scour_y, 2)
-                sleep(0.2)
+                sleep(0.1)
                 m.move(self.cr.biggrid_x,self.cr.biggrid_y)
-                sleep(0.2)
+                sleep(0.1)
                 m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
-                sleep(0.2)
+                sleep(0.1)
                 m.move(self.cr.chance_x, self.cr.chance_y)
-                sleep(0.2)
+                sleep(0.1)
                 m.click(self.cr.chance_x, self.cr.chance_y, 2)
-                sleep(0.2)
+                sleep(0.1)
                 m.move(self.cr.biggrid_x,self.cr.biggrid_y)
-                sleep(0.2)
+                sleep(0.1)
                 m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
-                sleep(0.2)
+                sleep(0.1)
                 
 
 
@@ -361,46 +359,44 @@ class POEFunctions:
             threading.Timer(1, self.chance_and_scour).start()
         else:
             self.chance = False
-            
+    
+    def get_affix(self):
+        m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+        sleep(0.1)
+        k.press_key(k.control_key)
+        k.tap_key("c")
+        k.release_key(k.control_key)
+        sleep(0.1)
+        wc.OpenClipboard()
+        text = wc.GetClipboardData(win32con.CF_UNICODETEXT)
+        wc.CloseClipboard()
+        return text
+
+    def _affix_alter(self, orb_x, orb_y):
+        m.move(orb_x, orb_y)
+        sleep(0.1)
+        m.click(orb_x, orb_y, 2)
+        sleep(0.1)
+        m.move(self.cr.biggrid_x,self.cr.biggrid_y)
+        sleep(0.1)
+        m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
+        sleep(0.1)
+    
     def affix_alter(self):
-        #prefix = "▲" suffix = "▽"
-        affix = "▲"#"▽" #"▲"#"▲"#
-        target = "爆炸"#"尾流" #"最大能量护盾"#"爆炸"#"活力"#"减少"#"灵巧"#"爆炸"#"主动技能"#"减少"#
-        used = ""
+        target = "恐惧"#"最大生命"#"尾流" #"最大能量护盾"#"爆炸"#"活力"#"减少"#"灵巧"#"爆炸"#"主动技能"#"减少"#
+        use = "aug"
         while self.altering:
             #copy clipboard
-            m.move(self.cr.biggrid_x,self.cr.biggrid_y)
-            sleep(0.1)
-            k.press_key(k.control_key)
-            k.tap_key("c")
-            k.release_key(k.control_key)
-            sleep(0.1)
-            wc.OpenClipboard()
-            text = wc.GetClipboardData(win32con.CF_UNICODETEXT)
-            wc.CloseClipboard()
+            text = self.get_affix()
             #print(text)
-            if re.search(affix, text) is None and used != "aug":
+            if re.search(target, text) is None:
                 #use Orb of Augmentation
-                m.move(self.cr.aug_x, self.cr.aug_y)
-                sleep(0.2)
-                m.click(self.cr.aug_x, self.cr.aug_y, 2)
-                sleep(0.2)
-                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
-                sleep(0.2)
-                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
-                sleep(0.2)
-                used = "aug"
-            elif re.search(target, text) is None:
-                #use Orb of Alteration
-                m.move(self.cr.alt_x, self.cr.alt_y)
-                sleep(0.2)
-                m.click(self.cr.alt_x, self.cr.alt_y, 2)
-                sleep(0.2)
-                m.move(self.cr.biggrid_x,self.cr.biggrid_y)
-                sleep(0.2)
-                m.click(self.cr.biggrid_x,self.cr.biggrid_y, 1)
-                sleep(0.2)
-                used = "alt"
+                if use == "aug":
+                    self._affix_alter(self.cr.aug_x, self.cr.aug_y)
+                    use = "alt"
+                elif use == "alt":
+                    self._affix_alter(self.cr.alt_x, self.cr.alt_y)
+                    use = "aug"
             else:
                 break
         self.altering = False
@@ -434,21 +430,16 @@ class POEFunctions:
             self.druging = False
 
     def timer_key(self):
+        k.press_key("f")
+        time = 0
         while self.timerkey:
-            if self.role == 0:
-#                k.tap_key("y")
-#                sleep(2)
-                k.tap_key("r")
-                sleep(2)
-                k.tap_key("t")
-                sleep(2)
-            elif self.role == 1 or self.role == 2:
-                k.tap_key("f")
-                sleep(0.2)
-                k.tap_key("r")
-                sleep(0.2)
-#                k.tap_key("t")
-#                sleep(0.2)
+            k.tap_key("r")
+            sleep(0.5)
+            #time += 0.5
+            #if time%3 == 0:
+            #    k.tap_key("e")
+            #    sleep(0.1)
+        k.release_key("f")
 
 
     def timer_key_start(self):
